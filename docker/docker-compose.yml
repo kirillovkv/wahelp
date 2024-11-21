@@ -1,0 +1,66 @@
+version: "3.3"
+services:
+  nginx:
+    environment:
+      TZ: "Europe/Moscow"
+    image: nginx:latest
+    volumes:
+      - ./nginx/site.conf:/etc/nginx/conf.d/site.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/mime.types:/etc/nginx/mime.types
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./var/nginx:/var/log/nginx
+      - ../src:/code:rw,cached
+    ports:
+      - "80:80"
+    links:
+      - app
+    networks:
+      app:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      TZ: 'GMT+3'
+      PGTZ: 'GMT+3'
+      POSTGRES_DB:
+      DB_NAME:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    ports:
+      - "35432:5432"
+    volumes:
+      - ./var/postgres/:/docker-entrypoint-initdb.d/
+      - ./var/postgres/data:/var/lib/postgresql/data:rw,cached
+    networks:
+      - app
+  adminer:
+    environment:
+      TZ: "Europe/Moscow"
+    image: adminer:latest
+    restart: always
+    ports:
+      - "8181:8080"
+    depends_on:
+      - db
+    links:
+      - app
+    networks:
+      - app
+  app:
+    environment:
+      TZ: "Europe/Moscow"
+    build:
+      context: ./php/
+    volumes:
+      - ../src:/code:rw,cached
+      - ./php/supervisor:/etc/supervisor/conf.d
+      - ./php/ini/memory_limit.ini:/usr/local/etc/php/conf.d/memory_limit.ini
+    working_dir: /code
+    networks:
+      - app
+    links:
+      - db
+networks:
+  app:
+
